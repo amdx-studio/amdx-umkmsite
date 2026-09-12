@@ -4,7 +4,7 @@
  * Frontend ↔ Flask API
  */
 
-const BASE_URL = "https://kerajinan-umkm-production.up.railway.app";
+const BASE_URL = "https://kerajinan-umkm-production.up.railway.app/api";
 
 
 // =====================================================
@@ -116,7 +116,7 @@ export function apiLogout() {
 
   localStorage.removeItem("umkm_user");
 
-  window.location.href = "../../index.html";
+  window.location.href = "/index.html";
 }
 
 
@@ -279,5 +279,4 @@ export async function apiKosongkanKeranjang() {
     }
   );
 }
-
 
