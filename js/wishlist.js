@@ -1,411 +1,141 @@
-/**
- * js/wishlist.js
- * Wishlist page logic — UMKM Kerajinan
- */
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wishlist — UMKM Kerajinan</title>
 
-import {
-  apiGetWishlist,
-  apiRemoveWishlist,
-  apiAddKeranjang,
-} from "./api.js";
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="../../css/wishlist.css" />
+</head>
+<body>
 
+  <!-- TOAST -->
+  <div id="toastContainer" class="toast-container"></div>
 
-// ══════════════════════════════════════
-// STATE
-// ══════════════════════════════════════
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-inner">
+      <a href="../home/index.html" class="nav-logo">
+        <span class="logo-icon"><i class="fa-solid fa-gem"></i></span>
+        <span class="logo-text">Kerajinan<em>UMKM</em></span>
+      </a>
 
-let wishlistData  = [];   // master list
-let displayData   = [];   // sorted view
-let currentSort   = "default";
+      <ul class="nav-links" id="navLinks">
+        <li><a href="../home/index.html"><i class="fa-solid fa-house"></i><span>Home</span></a></li>
+        <li><a href="../wishlist/wishlist.html" class="active"><i class="fa-solid fa-heart"></i><span>Wishlist</span></a></li>
+        <li><a href="../keranjang/keranjang.html"><i class="fa-solid fa-bag-shopping"></i><span>Keranjang</span></a></li>
+        <li><a href="../profile/profile.html"><i class="fa-solid fa-user"></i><span>Profile</span></a></li>
+      </ul>
 
-
-// ══════════════════════════════════════
-// HELPERS
-// ══════════════════════════════════════
-
-const getUser = () => JSON.parse(localStorage.getItem("umkm_user") || "null");
-
-const formatRupiah = (n) =>
-  "Rp " + Number(n).toLocaleString("id-ID");
-
-function renderStars(nilai) {
-  const n = Math.min(5, Math.max(0, Math.round(Number(nilai || 0))));
-  return Array.from({ length: 5 }, (_, i) =>
-    `<i class="fa-${i < n ? "solid" : "regular"} fa-star${i >= n ? " dim" : ""}"></i>`
-  ).join("");
-}
-
-
-// ══════════════════════════════════════
-// TOAST
-// ══════════════════════════════════════
-
-function showToast(msg, type = "info") {
-  const icons = {
-    success: "fa-circle-check",
-    error:   "fa-circle-xmark",
-    info:    "fa-circle-info",
-  };
-  const container = document.getElementById("toastContainer");
-  const el = document.createElement("div");
-  el.className = `toast toast-${type}`;
-  el.innerHTML = `
-    <span class="toast-icon"><i class="fa-solid ${icons[type]}"></i></span>
-    <span>${msg}</span>`;
-  container.appendChild(el);
-  setTimeout(() => {
-    el.style.transition = "0.3s";
-    el.style.opacity    = "0";
-    el.style.transform  = "translateX(40px)";
-    setTimeout(() => el.remove(), 320);
-  }, 3000);
-}
-
-
-// ══════════════════════════════════════
-// CONFIRM DIALOG
-// ══════════════════════════════════════
-
-function showConfirm(title, sub, onConfirm) {
-  const overlay = document.createElement("div");
-  overlay.className = "dialog-overlay";
-  overlay.innerHTML = `
-    <div class="dialog-box">
-      <div class="dialog-icon"><i class="fa-solid fa-trash-can"></i></div>
-      <h3 class="dialog-title">${title}</h3>
-      <p class="dialog-sub">${sub}</p>
-      <div class="dialog-actions">
-        <button class="dialog-cancel">Batal</button>
-        <button class="dialog-confirm">Hapus</button>
+      <div class="nav-actions">
+        <button class="btn-logout" id="btnLogout">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span>Logout</span>
+        </button>
+        <button class="nav-hamburger" id="navHamburger" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
       </div>
-    </div>`;
-  document.body.appendChild(overlay);
-
-  overlay.querySelector(".dialog-cancel").onclick  = () => overlay.remove();
-  overlay.querySelector(".dialog-confirm").onclick = () => { overlay.remove(); onConfirm(); };
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
-}
-
-
-// ══════════════════════════════════════
-// SKELETON LOADING
-// ══════════════════════════════════════
-
-function showSkeletons(count = 6) {
-  const grid = document.getElementById("wishlistGrid");
-  grid.innerHTML = Array.from({ length: count }, () => `
-    <div class="skeleton-card">
-      <div class="skeleton sk-img"></div>
-      <div class="skeleton sk-line sk-w80" style="margin-top:14px"></div>
-      <div class="skeleton sk-line sk-w55"></div>
-      <div class="skeleton sk-line sk-w40"></div>
-      <div class="skeleton sk-btn"></div>
-    </div>`).join("");
-}
-
-
-// ══════════════════════════════════════
-// SORT
-// ══════════════════════════════════════
-
-function applySort(sort) {
-  currentSort = sort;
-  const list = [...wishlistData];
-
-  if (sort === "price-asc")  list.sort((a,b) => (a.produk?.harga||0) - (b.produk?.harga||0));
-  if (sort === "price-desc") list.sort((a,b) => (b.produk?.harga||0) - (a.produk?.harga||0));
-  if (sort === "rating")     list.sort((a,b) => (b.produk?.rating||0) - (a.produk?.rating||0));
-
-  displayData = list;
-  renderGrid();
-}
-
-
-// ══════════════════════════════════════
-// RENDER GRID
-// ══════════════════════════════════════
-
-function renderGrid() {
-  const grid     = document.getElementById("wishlistGrid");
-  const empty    = document.getElementById("emptyState");
-  const toolbar  = document.getElementById("toolbar");
-  const countEl  = document.getElementById("wishlistCount");
-
-  countEl.textContent = wishlistData.length;
-
-  if (!displayData.length) {
-    grid.innerHTML = "";
-    empty.style.display   = "flex";
-    toolbar.style.display = "none";
-    return;
-  }
-
-  empty.style.display   = "none";
-  toolbar.style.display = "flex";
-  grid.innerHTML = "";
-
-  displayData.forEach((item, idx) => {
-    const p = item.produk || item;
-    const card = buildCard(p, item.id || item.produk_id, idx);
-    grid.appendChild(card);
-  });
-}
-
-
-// ══════════════════════════════════════
-// BUILD CARD
-// ══════════════════════════════════════
-
-function buildCard(produk, wishlistId, idx) {
-  const card = document.createElement("div");
-  card.className = "product-card";
-  card.dataset.id = wishlistId;
-  card.style.animationDelay = `${idx * 0.06}s`;
-
-const imgHtml = produk.gambar_url
-  ? `<img
-       src="https://web-production-aa9b5.up.railway.app/static/uploads/${produk.gambar_url}"
-       alt="${produk.nama}"
-     >`
-  : `<div class="card-img-placeholder">
-       <i class="fa-solid fa-image"></i>
-     </div>`;
-
-  card.innerHTML = `
-    <div class="card-img-wrap" data-produk-id="${produk.id}">
-      ${imgHtml}
-      <span class="card-cat">${produk.kategori || "Kerajinan"}</span>
-      <button class="btn-remove-float" title="Hapus dari wishlist">
-        <i class="fa-solid fa-heart-crack"></i>
-      </button>
     </div>
+  </nav>
 
-    <div class="card-body">
-      <h3 class="card-name" data-produk-id="${produk.id}">${produk.nama || "Produk"}</h3>
-      <div class="card-rating">
-        <span class="stars">${renderStars(produk.rating)}</span>
-        <span class="rating-val">${produk.rating ? Number(produk.rating).toFixed(1) : "—"}</span>
+  <!-- MAIN -->
+  <main class="main-content">
+
+    <!-- HEADER SECTION -->
+    <section class="wishlist-header">
+      <div class="header-bg-strip"></div>
+      <div class="header-content">
+        <div class="header-icon-wrap">
+          <i class="fa-solid fa-heart"></i>
+        </div>
+        <div class="header-text">
+          <p class="header-eyebrow">Koleksi Favorit Anda</p>
+          <h1 class="header-title">Wishlist <em>Saya</em></h1>
+          <p class="header-sub">
+            <span id="wishlistCount" class="count-badge">—</span>
+            produk tersimpan
+          </p>
+        </div>
       </div>
-      <p class="card-price">${formatRupiah(produk.harga || 0)}</p>
+
+      <!-- Sort / Filter bar -->
+      <div class="toolbar glass-card" id="toolbar" style="display:none">
+        <div class="toolbar-left">
+          <button class="toolbar-btn active" data-sort="default">Terbaru</button>
+          <button class="toolbar-btn" data-sort="price-asc">Harga ↑</button>
+          <button class="toolbar-btn" data-sort="price-desc">Harga ↓</button>
+          <button class="toolbar-btn" data-sort="rating">Rating</button>
+        </div>
+        <button class="btn-clear-all" id="btnClearAll">
+          <i class="fa-solid fa-trash-can"></i> Hapus Semua
+        </button>
+      </div>
+    </section>
+
+    <!-- GRID -->
+    <section class="wishlist-grid-section">
+      <div class="wishlist-grid" id="wishlistGrid">
+        <!-- skeleton cards injected by JS -->
+      </div>
+    </section>
+
+    <!-- EMPTY STATE -->
+    <div class="empty-state" id="emptyState" style="display:none">
+      <div class="empty-orb"></div>
+      <div class="empty-icon"><i class="fa-regular fa-heart"></i></div>
+      <h2 class="empty-title">Wishlist Masih Kosong</h2>
+      <p class="empty-sub">Temukan produk kerajinan tangan terbaik dan simpan di sini.</p>
+      <a href="../home/index.html" class="btn-shop">
+        <i class="fa-solid fa-store"></i> Mulai Belanja
+      </a>
     </div>
 
-    <div class="card-footer">
-      <button class="btn-cart" data-produk-id="${produk.id}">
-        <i class="fa-solid fa-bag-shopping"></i> Keranjang
-      </button>
-      <button class="btn-detail" data-produk-id="${produk.id}">
-        <i class="fa-solid fa-eye"></i> Detail
-      </button>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="nav-logo" style="margin-bottom:14px">
+          <span class="logo-icon"><i class="fa-solid fa-gem"></i></span>
+          <span class="logo-text">Kerajinan<em>UMKM</em></span>
+        </div>
+        <p>Platform digital untuk produk kerajinan tangan Indonesia berkualitas tinggi.</p>
+      </div>
+      <div class="footer-col">
+  <h4>Navigasi</h4>
+  <a href="../home/index.html">Beranda</a>
+  <a href="../wishlist/wishlist.html">Wishlist</a>
+  <a href="../keranjang/keranjang.html">Keranjang</a>
+  <a href="../profile/profile.html">Profile</a>
+</div>
+      <div class="footer-col">
+        <h4>Tentang</h4>
+        <a href="#">Tentang Kami</a>
+        <a href="#">Kebijakan Privasi</a>
+        <a href="#">Syarat & Ketentuan</a>
+        <a href="#">Hubungi Kami</a>
+      </div>
+      <div class="footer-col">
+        <h4>Ikuti Kami</h4>
+        <div class="social-icons">
+          <a href="#" class="social-btn"><i class="fa-brands fa-instagram"></i></a>
+          <a href="#" class="social-btn"><i class="fa-brands fa-tiktok"></i></a>
+          <a href="#" class="social-btn"><i class="fa-brands fa-facebook"></i></a>
+          <a href="#" class="social-btn"><i class="fa-brands fa-whatsapp"></i></a>
+        </div>
+      </div>
     </div>
-  `;
+    <div class="footer-bottom">
+      <p>&copy; 2025 KerajinanUMKM. Dibuat dengan <i class="fa-solid fa-heart" style="color:var(--gold)"></i> untuk pengrajin Indonesia.</p>
+    </div>
+  </footer>
 
-  // ── Listeners ──
-
-  // Image / name → detail
-  card.querySelector(".card-img-wrap").addEventListener("click", (e) => {
-    if (e.target.closest(".btn-remove-float")) return;
-    goDetail(produk.id);
-  });
-  card.querySelector(".card-name").addEventListener("click", () => goDetail(produk.id));
-
-  // Detail button
-  card.querySelector(".btn-detail").addEventListener("click", () => goDetail(produk.id));
-
-  // Remove
-  card.querySelector(".btn-remove-float").addEventListener("click", () => {
-    showConfirm(
-      "Hapus dari Wishlist?",
-      `<strong>${produk.nama}</strong> akan dihapus dari wishlist Anda.`,
-      () => removeWishlist(wishlistId, card)
-    );
-  });
-
-  // Add to cart
-  card.querySelector(".btn-cart").addEventListener("click", async (e) => {
-    const btn = e.currentTarget;
-    await addToKeranjang(produk.id, btn);
-  });
-
-  return card;
-}
-
-
-// ══════════════════════════════════════
-// ACTIONS
-// ══════════════════════════════════════
-
-function goDetail(produkId) {
-  window.location.href = `../detail/detail.html?id=${produkId}`;
-}
-
-async function removeWishlist(wishlistId, card) {
-  card.classList.add("removing");
-
-  try {
-    await apiRemoveWishlist(wishlistId);
-
-    // Remove from state
-    wishlistData = wishlistData.filter(
-      (w) => (w.id || w.produk_id) !== wishlistId
-    );
-    displayData = displayData.filter(
-      (w) => (w.id || w.produk_id) !== wishlistId
-    );
-
-    setTimeout(() => {
-      card.remove();
-      updateCountBadge();
-      // show empty if needed
-      if (!wishlistData.length) {
-        document.getElementById("emptyState").style.display = "flex";
-        document.getElementById("toolbar").style.display    = "none";
-        document.getElementById("wishlistCount").textContent = 0;
-      }
-    }, 400);
-
-    showToast("Produk dihapus dari wishlist", "success");
-
-  } catch (err) {
-    card.classList.remove("removing");
-    showToast(err.message || "Gagal menghapus wishlist", "error");
-  }
-}
-
-async function addToKeranjang(produkId, btn) {
-  const original = btn.innerHTML;
-  btn.disabled  = true;
-  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menambahkan...`;
-
-  try {
-    await apiAddKeranjang(produkId, 1);
-    btn.innerHTML = `<i class="fa-solid fa-check"></i> Ditambahkan!`;
-    btn.style.color = "var(--green)";
-    showToast("Produk ditambahkan ke keranjang", "success");
-
-    setTimeout(() => {
-      btn.disabled   = false;
-      btn.innerHTML  = original;
-      btn.style.color = "";
-    }, 2200);
-
-  } catch (err) {
-    btn.disabled  = false;
-    btn.innerHTML = original;
-    showToast(err.message || "Gagal menambah ke keranjang", "error");
-  }
-}
-
-async function clearAll() {
-  showConfirm(
-    "Hapus Semua Wishlist?",
-    "Semua produk di wishlist Anda akan dihapus. Tindakan ini tidak dapat diurungkan.",
-    async () => {
-      const ids = [...wishlistData.map((w) => w.id || w.produk_id)];
-      let failed = 0;
-
-      for (const id of ids) {
-        try {
-          await apiRemoveWishlist(id);
-        } catch {
-          failed++;
-        }
-      }
-
-      wishlistData = [];
-      displayData  = [];
-      renderGrid();
-      updateCountBadge();
-
-      if (!failed) showToast("Semua wishlist berhasil dihapus", "success");
-      else showToast(`${failed} item gagal dihapus`, "error");
-    }
-  );
-}
-
-function updateCountBadge() {
-  document.getElementById("wishlistCount").textContent = wishlistData.length;
-}
-
-
-// ══════════════════════════════════════
-// LOAD WISHLIST
-// ══════════════════════════════════════
-
-async function loadWishlist() {
-  showSkeletons(6);
-  document.getElementById("emptyState").style.display = "none";
-
-  try {
-    const res = await apiGetWishlist();
-    wishlistData = res.data || res.wishlist || [];
-    displayData  = [...wishlistData];
-    renderGrid();
-
-  } catch (err) {
-    document.getElementById("wishlistGrid").innerHTML = `
-      <div style="grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--text-muted)">
-        <i class="fa-solid fa-triangle-exclamation" style="font-size:36px;color:var(--gold);opacity:.4;margin-bottom:12px;display:block"></i>
-        <p>${err.message || "Gagal memuat wishlist. Coba lagi nanti."}</p>
-      </div>`;
-    showToast("Gagal memuat wishlist", "error");
-  }
-}
-
-
-// ══════════════════════════════════════
-// NAVBAR
-// ══════════════════════════════════════
-
-function initNavbar() {
-  window.addEventListener("scroll", () => {
-    document.getElementById("navbar").classList.toggle("scrolled", window.scrollY > 10);
-  });
-
-document.getElementById("btnLogout").addEventListener("click", () => {
-  localStorage.removeItem("umkm_user");
-  window.location.href = "../../index.html";
-});
-
-  const hamburger = document.getElementById("navHamburger");
-  const navLinks  = document.getElementById("navLinks");
-  hamburger.addEventListener("click", () => {
-    hamburger.classList.toggle("open");
-    navLinks.classList.toggle("open");
-  });
-}
-
-
-// ══════════════════════════════════════
-// SORT TOOLBAR
-// ══════════════════════════════════════
-
-function initToolbar() {
-  document.querySelectorAll(".toolbar-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".toolbar-btn").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      applySort(btn.dataset.sort);
-    });
-  });
-
-  document.getElementById("btnClearAll").addEventListener("click", clearAll);
-}
-
-
-// ══════════════════════════════════════
-// BOOT
-// ══════════════════════════════════════
-
-async function boot() {
-  const user = getUser();
-  if (!user) {
-    window.location.href = "../../login.html";
-    return;
-  }
-
-  initNavbar();
-  initToolbar();
-  await loadWishlist();
-}
-
-document.addEventListener("DOMContentLoaded", boot);
+  <script type="module" src="../../js/wishlist.js"></script>
+</body>
+</html>
