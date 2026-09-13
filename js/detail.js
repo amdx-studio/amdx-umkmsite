@@ -49,7 +49,7 @@ let produkId      = null;
    AUTH CHECK
 ───────────────────────── */
 const user = JSON.parse(localStorage.getItem("umkm_user"));
-if (!user) window.location.href = "login.html";
+if (!user) window.location.href = "../../index.html";
 
 /* ─────────────────────────
    NAVBAR
@@ -144,7 +144,7 @@ async function loadProduk() {
 
   if (!id) {
     showToast("ID produk tidak ditemukan.");
-    setTimeout(() => window.location.href = "/frontend/index.html", 2000);
+    setTimeout(() => window.location.href = "../home/index.html", 2000);
     return;
   }
 
