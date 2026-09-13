@@ -229,13 +229,13 @@ const imgHTML = `
          style="animation-delay:${idx * 0.06}s">
 
       <div class="item-img-wrap"
-           onclick="window.location.href='detail.html?id=${produkId}'">
+           onclick="window.location.href='../detail/detail.html?id=${produkId}'">
         ${imgHTML}
       </div>
 
       <div class="item-info">
         <span class="item-name"
-              onclick="window.location.href='detail.html?id=${produkId}'">${nama}</span>
+              onclick="window.location.href='../detail/detail.html?id=${produkId}'">${nama}</span>
         <span class="item-price">${formatRupiah(harga)}</span>
         <span class="item-stock">
           <span class="stock-dot ${stockClass}"></span>
@@ -261,7 +261,7 @@ const imgHTML = `
 
         <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
           <button class="btn-detail-item"
-                  onclick="window.location.href='detail.html?id=${produkId}'">
+                  onclick="window.location.href='../detail/detail.html?id=${produkId}'">
             <i class="fa-regular fa-eye"></i> Detail
           </button>
           <button class="btn-remove-item">
@@ -455,7 +455,7 @@ function renderEmptyState() {
       Belum ada produk di keranjang Anda.<br>
       Yuk, temukan kerajinan tangan istimewa untuk Anda!
     </p>
-    <a href="produk.html" class="btn-shop">
+    <a href="../home/index.html" class="btn-shop">
       <i class="fa-solid fa-store"></i> Mulai Belanja Sekarang
     </a>
   `;
