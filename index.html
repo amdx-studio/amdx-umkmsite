@@ -335,10 +335,18 @@
   <!-- Role-select toggle script -->
   <script>
     (function(){
+      var ADMIN_URL = "https://admin-web-phi-nine.vercel.app/";
+
       document.querySelectorAll('.role-select').forEach(function(group){
         var hidden = group.nextElementSibling; // input[type=hidden] langsung setelah .role-select
         group.querySelectorAll('.role-btn').forEach(function(btn){
           btn.addEventListener('click', function(){
+            // Klik tombol Admin -> langsung arahkan ke panel admin eksternal
+            if (btn.dataset.role === 'admin') {
+              window.location.href = ADMIN_URL;
+              return;
+            }
+
             group.querySelectorAll('.role-btn').forEach(function(b){
               b.classList.remove('active');
               b.setAttribute('aria-selected', 'false');
