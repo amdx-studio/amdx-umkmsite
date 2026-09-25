@@ -37,7 +37,7 @@ export async function apiFetch(endpoint, options = {}) {
   };
 
   const res = await fetch(
-    `${BASE_URL}${endpoint}`,
+    `${API_BASE_URL}${endpoint}`,
     {
       ...options,
       headers,
@@ -268,15 +268,3 @@ export async function apiRemoveKeranjang(id) {
     }
   );
 }
-
-
-export async function apiKosongkanKeranjang() {
-
-  return apiFetch(
-    `/keranjang/?user_id=${getUserId()}`,
-    {
-      method: "DELETE",
-    }
-  );
-}
-
