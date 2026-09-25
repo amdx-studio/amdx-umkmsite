@@ -4,8 +4,7 @@
  */
 
 import { apiLogin, apiRegister } from "./api.js";
-const HOME       = "pages/home/index.html";
-const ADMIN_URL  = "https://admin-web-phi-nine.vercel.app/";
+const HOME = "pages/home/index.html";
 
 // ── AUTO REDIRECT ──
 if (localStorage.getItem("umkm_user")) window.location.replace(HOME);
@@ -178,10 +177,7 @@ document.getElementById("loginForm").addEventListener("submit", async e => {
 
       showMsg("loginMsg", "success", `Selamat datang, ${res.user?.nama || ""}! Mengalihkan…`);
       showToast("Login berhasil! Selamat datang.", "success");
-
-      // Arahkan admin ke panel admin eksternal, pembeli ke home
-      const target = role === "admin" ? ADMIN_URL : HOME;
-      setTimeout(() => window.location.replace(target), 950);
+      setTimeout(() => window.location.replace(HOME), 950);
     } else {
       showMsg("loginMsg", "error", res.message || "Login gagal. Coba lagi.");
       setError("loginEmail", true);
@@ -225,10 +221,7 @@ document.getElementById("registerForm").addEventListener("submit", async e => {
     if (res.success) {
       showMsg("registerMsg", "success", "Akun berhasil dibuat! Mengalihkan…");
       showToast("Registrasi berhasil! Selamat bergabung.", "success");
-
-      // Arahkan admin ke panel admin eksternal, pembeli ke home
-      const target = role === "admin" ? ADMIN_URL : HOME;
-      setTimeout(() => window.location.replace(target), 950);
+      setTimeout(() => window.location.replace(HOME), 950);
     } else {
       showMsg("registerMsg", "error", res.message || "Registrasi gagal. Coba lagi.");
     }
