@@ -4,7 +4,7 @@
  * Frontend ↔ Flask API
  */
 
-const API_BASE_URL = "https://kerajinan-umkm-new-production.up.railway.app";
+const API_BASE_URL = "https://kerajinan-umkm-new-production.up.railway.app/api";
 
 
 // =====================================================
