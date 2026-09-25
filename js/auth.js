@@ -4,7 +4,8 @@
  */
 
 import { apiLogin, apiRegister } from "./api.js";
-const HOME = "pages/home/index.html";
+const HOME       = "pages/home/index.html";
+const ADMIN_URL  = "https://admin-web-phi-nine.vercel.app/";
 
 // ── AUTO REDIRECT ──
 if (localStorage.getItem("umkm_user")) window.location.replace(HOME);
@@ -159,6 +160,7 @@ document.getElementById("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
   const email    = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
+  const role     = document.getElementById("loginRole").value; // "pembeli" | "admin"
 
   let ok = true;
   if (!email)    { setError("loginEmail", true);    ok = false; }
@@ -173,9 +175,13 @@ document.getElementById("loginForm").addEventListener("submit", async e => {
     if (res.success) {
       if (rememberCb?.checked) localStorage.setItem("remember_email", email);
       else localStorage.removeItem("remember_email");
+
       showMsg("loginMsg", "success", `Selamat datang, ${res.user?.nama || ""}! Mengalihkan…`);
       showToast("Login berhasil! Selamat datang.", "success");
-      setTimeout(() => window.location.replace(HOME), 950);
+
+      // Arahkan admin ke panel admin eksternal, pembeli ke home
+      const target = role === "admin" ? ADMIN_URL : HOME;
+      setTimeout(() => window.location.replace(target), 950);
     } else {
       showMsg("loginMsg", "error", res.message || "Login gagal. Coba lagi.");
       setError("loginEmail", true);
@@ -198,6 +204,7 @@ document.getElementById("registerForm").addEventListener("submit", async e => {
   const email    = document.getElementById("regEmail").value.trim();
   const password = document.getElementById("regPassword").value;
   const confirm  = document.getElementById("regConfirm").value;
+  const role     = document.getElementById("regRole").value; // "pembeli" | "admin"
 
   let ok = true;
   if (!nama)     { setError("regNama", true);     ok = false; }
@@ -214,11 +221,14 @@ document.getElementById("registerForm").addEventListener("submit", async e => {
 
   setLoading("registerBtn", true);
   try {
-    const res = await apiRegister(nama, email, password);
+    const res = await apiRegister(nama, email, password, role);
     if (res.success) {
       showMsg("registerMsg", "success", "Akun berhasil dibuat! Mengalihkan…");
       showToast("Registrasi berhasil! Selamat bergabung.", "success");
-      setTimeout(() => window.location.replace(HOME), 950);
+
+      // Arahkan admin ke panel admin eksternal, pembeli ke home
+      const target = role === "admin" ? ADMIN_URL : HOME;
+      setTimeout(() => window.location.replace(target), 950);
     } else {
       showMsg("registerMsg", "error", res.message || "Registrasi gagal. Coba lagi.");
     }
